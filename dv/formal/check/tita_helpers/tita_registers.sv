@@ -1,0 +1,25 @@
+// registers are in `RF.rf_reg
+// cap registers are in `RF.rf_cap
+// `INSTR points to the instruction in the wbexc stage
+// SCR registers are in `CSR.[reg]_cap where reg in mepc (for mepcc), mtvec (for mtcc)
+// mtdc, mscratchc found in `CSRG.[reg]_cap where reg in mtdc, mscratchc
+
+// define general purpose registers
+logic [31:0] regs [31:0] = `RF.rf_reg;
+// reg_cap_t [31:0] cap_regs = `RF.rf_cap; -> somehow throws error
+
+
+// define special status registers
+reg_cap_t mtdc = `CSRG.mtdc_cap;
+reg_cap_t mscratchc = `CSRG.mscratchc_cap;	
+reg_cap_t mepcc = `CSR.mepc_cap;
+reg_cap_t mtcc = `CSR.mtvec_cap;
+pcc_cap_t pcc = `CSR.pcc_cap_o;
+
+logic [31:0] mtdc_addr = `CSRG.mtdc_data;
+
+// define useful capability registers
+reg_cap_t csp = `RF.rf_cap[2];
+reg_cap_t ct2 = `RF.rf_cap[7];
+logic [31:0] csp_addr = `RF.rf_reg[2];
+logic [31:0] ct2_addr = `RF.rf_reg[7];

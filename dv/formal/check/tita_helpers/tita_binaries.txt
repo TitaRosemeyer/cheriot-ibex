@@ -1,0 +1,22 @@
+; sdk/core/switcher/entry.S:1136
+; 	cspecialw          mtdc, csp
+80000872: 03d1005b     	cspecialw	mtdc, csp
+; sdk/core/switcher/entry.S:1158
+; 	clc                ct2, TrustedStack_offset_mepcc(csp)
+8000087e: 6382         	clc	ct2, 0x0(csp)
+; .Lcommon_context_install():
+; sdk/core/switcher/entry.S:1182
+; 	clw                ra, TrustedStack_offset_mstatus(csp)
+80000888: 40aa         	clw	ra, 0x88(csp)
+; sdk/core/switcher/entry.S:1183
+; 	csrw               mstatus, ra
+8000088a: 30009073     	csrw	mstatus, ra
+; sdk/core/switcher/entry.S:1190
+; 	cspecialw          mepcc, ct2
+8000089a: 03f3805b     	cspecialw	mepcc, ct2
+8000089e: 60a2         	clc	cra, 0x8(csp)
+800008a8: 73e2         	clc	ct2, 0x38(csp)
+800008ba: 6142         	clc	csp, 0x10(csp)
+; sdk/core/switcher/entry.S:1198
+; 	mret
+800008bc: 30200073     	mret
