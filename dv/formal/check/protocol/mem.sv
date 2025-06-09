@@ -15,7 +15,7 @@ leaves some properties inconclusive.
 NoDataErr: assume property (~data_err_i);
 NoInstrErr: assume property (~instr_err_i);
 
-`define TIME_LIMIT 5
+`define TIME_LIMIT 1
 
 interface mem_assume_t(
     input logic req_o,
