@@ -1,5 +1,12 @@
+/*
+    This file defines some shorthands for registers and capabilities used in the tita module.
+    It includes definitions for general purpose registers and special status registers
+*/
+
+
 // registers are in `RF.rf_reg
 // cap registers are in `RF.rf_cap
+// the address of capability in `RF.rf_cap[i] is in `RF.rf_reg[i]
 // `INSTR points to the instruction in the wbexc stage
 // SCR registers are in `CSR.[reg]_cap where reg in mepc (for mepcc), mtvec (for mtcc)
 // mtdc, mscratchc found in `CSRG.[reg]_cap where reg in mtdc, mscratchc
