@@ -88,3 +88,7 @@ clean:
 	rm -rf build/
 	rm -rf jgproject/
 	rm -rf jgproofs/
+
+.PHONY: tita
+tita: fusesoc psgen sv
+	  jg verify_tita.tcl -allow_unsupported_OS -acquire_proj

@@ -512,4 +512,7 @@ ibex_compressed_decoder decompression_assertion_decoder_2(
 `define INSTR wbexc_decompressed_instr
 `include "../build/psgen.sv"
 
+//////////////////// Tita modules //////////////////////
+`include "tita_top.sv"
+
 endmodule
