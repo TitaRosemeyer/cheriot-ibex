@@ -13,7 +13,7 @@ Its submodules include instructions (properties related to instruction execution
 // Include helper files
 `include "tita_helpers/tita_registers.sv"
 `include "tita_helpers/tita_cap_overlap.sv" 
-
+`include "tita_helpers/tita_delay_buffer.sv"
 
 //----------------------------------------------------------
 // Defining the instruction lines 

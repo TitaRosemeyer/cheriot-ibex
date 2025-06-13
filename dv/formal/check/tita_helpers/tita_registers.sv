@@ -28,5 +28,7 @@ logic [31:0] mtdc_addr = `CSRG.mtdc_data;
 // define useful capability registers
 reg_cap_t csp = `RF.rf_cap[2];
 reg_cap_t ct2 = `RF.rf_cap[7];
+reg_cap_t cra = `RF.rf_cap[1];
 logic [31:0] csp_addr = `RF.rf_reg[2];
 logic [31:0] ct2_addr = `RF.rf_reg[7];
+logic [31:0] cra_addr = `RF.rf_reg[1];
