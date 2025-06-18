@@ -24,6 +24,12 @@ reg_cap_t mtcc = `CSR.mtvec_cap;
 pcc_cap_t pcc = `CSR.pcc_cap_o;
 
 logic [31:0] mtdc_addr = `CSRG.mtdc_data;
+logic [31:0] mscratchc_addr = `CSRG.mscratchc_data;
+logic [31:0] mepcc_addr = `CSR.mepc_q;
+logic [31:0] mtcc_addr = `CSR.mtvec_q;
+
+
+logic [31:0] mstatus = `CSR.mstatus_en_combi;
 
 // define useful capability registers
 reg_cap_t csp = `RF.rf_cap[2];

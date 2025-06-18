@@ -60,6 +60,23 @@ module tita;
     BigCapBounds: assert property (csp.valid && csp.exp == 5'd24 |-> csp_top >= csp_base); 
     OverlapSanityCheck: assert property (csp_top >= csp_base |-> overlap(csp,csp_addr, csp, csp_addr));
 
+    // prevent clc instructions from raising exceptions
+    // csp.valid set, csp unsealed, csp grants PERMIT_LOAD, 
+    // csp.addr + imm >= csp_base, csp.addr + imm + CLEN/8 <= csp_top for 0 <= imm <=0x88
+    // csp.addr + imm is aligned to CLEN/8, for imm = 0 mod 8
+    // I assume CLEN is 64 bits, so CLEN/8 = 8 bytes (cap_size in the manual)
+    logic csp_unsealed = csp.otype == 3'b000;
+    logic csp_has_permit_load = csp.cperms[4:3] == 2'b11 | csp.cperms[4:2] == 3'b101 | csp.cperms[4:1] == 4'b1001 | csp.cperms[4:3] == 2'b01;
+    logic csp_addr_in_bounds = (csp_addr >= csp_base) && (csp_addr + 32'h88 + 32'h8 <= csp_top);
+    logic csp_addr_aligned = (csp_addr % 8 == 0); // assuming CLEN is 64
+    logic csp_assumptions = csp.valid && csp_unsealed && csp_has_permit_load && csp_addr_in_bounds && csp_addr_aligned;
+
+    
+    logic PCCHasASR = (pcc.cperms[4:2] == 3'b011);
+
+   
+    
+
     module instructions;
         //----------------------------------------------------------
         // Defining overlap functions with registers and memory
@@ -70,17 +87,15 @@ module tita;
         `CAPNOOVERLAPREGS_FN(no_overlap_except2_fn, i != 2)
 
         // Shorthand for overlap of csp capabilities with registers
-        logic csp_no_overlap_all = no_overlap_all_fn(csp, csp_addr);
         logic csp_no_overlap_except2 = no_overlap_except2_fn(csp, csp_addr);
+        logic csp_at_entry_no_overlap_all = no_overlap_all_fn(csp_at_entry, csp_addr_at_entry);
+        logic csp_at_entry_no_overlap_except2 = no_overlap_except2_fn(csp_at_entry, csp_addr_at_entry);
 
         `define CPU_WB_PATH  ibex_top_i.u_ibex_core.wb_stage_i
         reg_cap_t lsu_cap_i = `CPU_WB_PATH.rf_wcap_lsu_i;
         logic [31:0] lsu_addr_i = `CPU_WB_PATH.rf_wdata_lsu_i;
 
         logic csp_no_memory_overlap = ~overlap(csp, csp_addr, lsu_cap_i , lsu_addr_i);
-        for (genvar i = 1; i <= CSP_AT_ENTRY_DELAY; i++) begin : gen_csp_buffer_no_memory_overlap
-            logic csp_buffer_no_memory_overlap_i = ~overlap(csp_buffer[i], csp_addr_buffer[i], lsu_cap_i, lsu_addr_i);
-        end
         logic csp_at_entry_no_memory_overlap = ~overlap(csp_at_entry, csp_addr_at_entry, lsu_cap_i, lsu_addr_i);
 
         // This is a test on code execution just for the first instruction
