@@ -110,6 +110,9 @@ module tita;
         `define INSTR_LIFECYCLE \
             ((instr_will_progress) or ((~instr_will_progress)[*1:2] ##1 instr_will_progress))
 
+        // same as instr_lifecycle but with concrete delay -> only works for n >= 1
+        `define INSTR_DELAY(n) \
+            ((~instr_will_progress)[*n-1] ##1 instr_will_progress)
 
         property line_0_prop;
             (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
@@ -162,34 +165,29 @@ module tita;
         endproperty
         lines_0_3: assert property (lines_0_3_prop);
 
-        property lines_0_4_prop;
+        property lines_0_3_concrete_prop;
             (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
-            `INSTR_LIFECYCLE)
+            `INSTR_DELAY(2))
             ##1
             (`INSTR_WB(1) and
-            (csp_at_entry_no_memory_overlap throughout `INSTR_LIFECYCLE))
+            (csp_at_entry_no_memory_overlap throughout (instr_will_progress)))
             ##1
-            (`INSTR_WB(2) and `INSTR_LIFECYCLE)
+            (`INSTR_WB(2) and `INSTR_DELAY(2))
             ##1
-            (`INSTR_WB(3) and `INSTR_LIFECYCLE)
-            ##1
-            (`INSTR_WB(4) and `INSTR_LIFECYCLE)
-            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry
+            (`INSTR_WB(3) and `INSTR_DELAY(3))
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry 
             && ~overlap(csp_at_entry, csp_addr_at_entry, ct2, ct2_addr)
-            && mepcc == ct2 && mepcc_addr == ct2_addr 
             );
         endproperty
-        // lines_0_4: assert property (lines_0_4_prop);
+        lines_0_3_concrete: assert property (lines_0_3_concrete_prop);
         
-        // same as instr_lifecycle but with concrete delay
-        `define INSTR_DELAY(n) \
-            ((~instr_will_progress)[*n-1] ##1 instr_will_progress)
         
         property all_lines_concrete_delay_prop;
             (
-            csp_at_entry_no_memory_overlap throughout
-            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
-            `INSTR_DELAY(2))
+            (PCCHasASR && csp_assumptions) and
+            (csp_at_entry_no_memory_overlap throughout
+            (
+            (`INSTR_WB(0) and `INSTR_DELAY(2))
             ##1
             (`INSTR_WB(1) and (instr_will_progress))
             ##1
@@ -203,7 +201,8 @@ module tita;
             ##1
             (`INSTR_WB(6) and `INSTR_DELAY(2))
             ##1
-            (`INSTR_WB(7) and (instr_will_progress)))
+            (`INSTR_WB(7) and (instr_will_progress))
+            ))
             |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry 
             ##1 ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), csp, csp_addr)
             && ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), ct2, ct2_addr)
@@ -231,28 +230,28 @@ module tita;
         property push_through_prop;
             (
             (csp_assumptions && PCCHasASR && wbexc_exists) and
-            (`INSTR == instr_lines[0])[*1:l0_delay] 
+            (`INSTR == instr_lines[0])[*l0_delay] 
             ##1 
-            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap)[*1:l1_delay] 
+            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap)[*l1_delay] 
             ##1
-            (`INSTR == instr_lines[2] && csp_at_entry_no_memory_overlap)[*1:l2_delay] 
+            (`INSTR == instr_lines[2] && csp_at_entry_no_memory_overlap)[*l2_delay] 
             ##1
-            (`INSTR == instr_lines[3])[*1:l3_delay] 
+            (`INSTR == instr_lines[3])[*l3_delay] 
             ##1 
-            (`INSTR == instr_lines[4])[*1:l4_delay] 
+            (`INSTR == instr_lines[4])[*l4_delay] 
             ##1 
-            (`INSTR == instr_lines[5] && csp_at_entry_no_memory_overlap)[*1:l5_delay] 
+            (`INSTR == instr_lines[5] && csp_at_entry_no_memory_overlap)[*l5_delay] 
             ##1 
-            (`INSTR == instr_lines[6] && csp_at_entry_no_memory_overlap)[*1:l6_delay] 
+            (`INSTR == instr_lines[6] && csp_at_entry_no_memory_overlap)[*l6_delay] 
             ##1 
-            (`INSTR == instr_lines[7] && csp_at_entry_no_memory_overlap)[*1:l7_delay] 
+            (`INSTR == instr_lines[7] && csp_at_entry_no_memory_overlap)[*l7_delay] 
             ##1 
             instr_has_changed
             |-> $past(mtdc == csp_at_entry  && mtdc_addr == csp_addr_at_entry)
             && ~overlap(csp, csp_addr, $past(csp_at_entry), $past(csp_addr_at_entry)) 
             && ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), ct2, ct2_addr) 
             && ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), cra, cra_addr)
-        );
+            );
         endproperty
         push_through: assert property (push_through_prop);
     endmodule
