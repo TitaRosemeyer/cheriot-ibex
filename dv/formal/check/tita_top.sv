@@ -98,50 +98,147 @@ module tita;
         logic csp_no_memory_overlap = ~overlap(csp, csp_addr, lsu_cap_i , lsu_addr_i);
         logic csp_at_entry_no_memory_overlap = ~overlap(csp_at_entry, csp_addr_at_entry, lsu_cap_i, lsu_addr_i);
 
-        // This is a test on code execution just for the first instruction
-        // It checks that the instruction is executed correctly and tests the overlap functions
-        logic PCCHasASR = (pcc.cperms[4:2] == 3'b011);
-        property cspecialw_test;
-            (PCCHasASR &&
-            `INSTR == 32'h03d1005b &&
-            finishing_executed &&
-            no_overlap_except2_fn(csp, csp_addr)
-            |->  mtdc == csp &&
-            mtdc_addr == regs[2] 
-            ##1 
-            no_overlap_except2_fn($past(csp), $past(csp_addr))
+        
+
+        //----------------------------------------------------------
+        // New idea: using a delay buffer of instr_will_progress 
+        //----------------------------------------------------------
+
+        `define INSTR_WB(i) \
+            wbexc_exists && ~wbexc_fetch_err && `INSTR == instr_lines[i] 
+        
+        `define INSTR_LIFECYCLE \
+            ((instr_will_progress) or ((~instr_will_progress)[*1:2] ##1 instr_will_progress))
+
+
+        property line_0_prop;
+            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
+            `INSTR_LIFECYCLE)
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry
             );
         endproperty
+        line_0: assert property (line_0_prop);
+
+        property lines_0_1_prop;
+            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
+            `INSTR_LIFECYCLE)
+            ##1
+            (`INSTR_WB(1) and
+            (csp_at_entry_no_memory_overlap throughout `INSTR_LIFECYCLE))
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry 
+            ##1 ~overlap(ct2, ct2_addr, $past(csp_at_entry), $past(csp_addr_at_entry)) 
+            
+            );
+        endproperty
+        lines_0_1: assert property (lines_0_1_prop);
+
+        property lines_0_2_prop;
+            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
+            `INSTR_LIFECYCLE)
+            ##1
+            (`INSTR_WB(1) and
+            (csp_at_entry_no_memory_overlap throughout `INSTR_LIFECYCLE))
+            ##1
+            (`INSTR_WB(2) and `INSTR_LIFECYCLE)
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry 
+            && ~overlap(csp_at_entry, csp_addr_at_entry, ct2, ct2_addr)
+            );
+        endproperty
+        lines_0_2: assert property (lines_0_2_prop);
+
+        property lines_0_3_prop;
+            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
+            `INSTR_LIFECYCLE)
+            ##1
+            (`INSTR_WB(1) and
+            (csp_at_entry_no_memory_overlap throughout `INSTR_LIFECYCLE))
+            ##1
+            (`INSTR_WB(2) and `INSTR_LIFECYCLE)
+            ##1
+            (`INSTR_WB(3) and `INSTR_LIFECYCLE)
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry 
+            && ~overlap(csp_at_entry, csp_addr_at_entry, ct2, ct2_addr)
+            );
+        endproperty
+        lines_0_3: assert property (lines_0_3_prop);
+
+        property lines_0_4_prop;
+            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
+            `INSTR_LIFECYCLE)
+            ##1
+            (`INSTR_WB(1) and
+            (csp_at_entry_no_memory_overlap throughout `INSTR_LIFECYCLE))
+            ##1
+            (`INSTR_WB(2) and `INSTR_LIFECYCLE)
+            ##1
+            (`INSTR_WB(3) and `INSTR_LIFECYCLE)
+            ##1
+            (`INSTR_WB(4) and `INSTR_LIFECYCLE)
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry
+            && ~overlap(csp_at_entry, csp_addr_at_entry, ct2, ct2_addr)
+            && mepcc == ct2 && mepcc_addr == ct2_addr 
+            );
+        endproperty
+        // lines_0_4: assert property (lines_0_4_prop);
+        
+        // same as instr_lifecycle but with concrete delay
+        `define INSTR_DELAY(n) \
+            ((~instr_will_progress)[*n-1] ##1 instr_will_progress)
+        
+        property all_lines_concrete_delay_prop;
+            (
+            csp_at_entry_no_memory_overlap throughout
+            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
+            `INSTR_DELAY(2))
+            ##1
+            (`INSTR_WB(1) and (instr_will_progress))
+            ##1
+            (`INSTR_WB(2) and `INSTR_DELAY(2))
+            ##1
+            (`INSTR_WB(3) and `INSTR_DELAY(3))
+            ##1
+            (`INSTR_WB(4) and `INSTR_DELAY(2))
+            ##1
+            (`INSTR_WB(5) and `INSTR_DELAY(2))
+            ##1
+            (`INSTR_WB(6) and `INSTR_DELAY(2))
+            ##1
+            (`INSTR_WB(7) and (instr_will_progress)))
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry 
+            ##1 ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), csp, csp_addr)
+            && ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), ct2, ct2_addr)
+            && ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), cra, cra_addr)
+            );
+        endproperty
+        all_lines_concrete_delay: assert property (all_lines_concrete_delay_prop);
+        
 
         //----------------------------------------------------------
-        // Trying different versions of overlap checks with at entry values
-        // Just the first two lines
+        // Doing it the old way: checking which instruction is in `INSTR
         //----------------------------------------------------------
-        no_overlap_line_1: assert property (
-            `INSTR == instr_lines[0] && csp_no_overlap_except2 
-            ##1 
-            (`INSTR == instr_lines[1] && csp_no_memory_overlap )
+        property line_0_old_prop;
+            (
+            (csp_assumptions && PCCHasASR && wbexc_exists && ~wbexc_fetch_err) and
+            (`INSTR == instr_lines[0])[*1:5]
             ##1
             instr_has_changed
-            |->  no_overlap_except2_fn(csp_buffer[1], csp_addr_buffer[1])
+            |-> $past(mtdc == csp_at_entry) &&
+            $past(mtdc_addr == csp_addr_at_entry) 
         ); 
-        no_overlap_line_1_concrete: assert property (
-            `INSTR == instr_lines[0] && csp_no_overlap_except2 
-            ##1 
-            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap )
-            ##1
-            instr_has_changed
-            |->  no_overlap_except2_fn(csp_at_entry, csp_addr_at_entry)
-        ); 
+        endproperty
+        // line_0_old: assert property (line_0_old_prop);
 
-        no_overlap_line_1_old: assert property (
-            `INSTR == instr_lines[0] && csp_no_overlap_except2 
+        property lines_0_1_old_prop;
+            ((csp_assumptions && PCCHasASR && wbexc_exists && ~wbexc_fetch_err) and
+            (`INSTR == instr_lines[0])[*1:5] 
             ##1 
-            (`INSTR == instr_lines[1] && csp_no_memory_overlap )
+            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap && ~wbexc_fetch_err)[*1:5] 
             ##1
             instr_has_changed
-            |->  csp_no_overlap_except2
+            |->  ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), ct2, ct2_addr) 
         ); 
+        endproperty
+        // lines_0_1_old: assert property (lines_0_1_old_prop);
 
 
         //----------------------------------------------------------
