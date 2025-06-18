@@ -144,48 +144,95 @@ module tita;
         parameter l7_delay = 1;
 
         // trying on the whole code block with concrete delays
-        push_through_concrete_delay: assert property(
-            `INSTR == instr_lines[0] && csp_no_overlap_except2
+        property push_through_prop;
+            (
+            (csp_assumptions && PCCHasASR && wbexc_exists) and
+            (`INSTR == instr_lines[0])[*1:l0_delay] 
             ##1 
-            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap)[*l1_delay]
+            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap)[*1:l1_delay] 
             ##1
-            (`INSTR == instr_lines[2] && csp_at_entry_no_memory_overlap)[*l2_delay]
+            (`INSTR == instr_lines[2] && csp_at_entry_no_memory_overlap)[*1:l2_delay] 
             ##1
-            (`INSTR == instr_lines[3] && csp_at_entry_no_memory_overlap)[*l3_delay]
+            (`INSTR == instr_lines[3])[*1:l3_delay] 
             ##1 
-            (`INSTR == instr_lines[4] && csp_at_entry_no_memory_overlap)[*l4_delay]     
+            (`INSTR == instr_lines[4])[*1:l4_delay] 
             ##1 
-            (`INSTR == instr_lines[5] && csp_at_entry_no_memory_overlap)[*l5_delay]
+            (`INSTR == instr_lines[5] && csp_at_entry_no_memory_overlap)[*1:l5_delay] 
             ##1 
-            (`INSTR == instr_lines[6] && csp_at_entry_no_memory_overlap)[*l6_delay]
+            (`INSTR == instr_lines[6] && csp_at_entry_no_memory_overlap)[*1:l6_delay] 
             ##1 
-            (`INSTR == instr_lines[7] && csp_at_entry_no_memory_overlap)[*l7_delay]
+            (`INSTR == instr_lines[7] && csp_at_entry_no_memory_overlap)[*1:l7_delay] 
             ##1 
             instr_has_changed
-            |-> no_overlap_all_fn($past(csp, 14), $past(csp_addr, 14))
+            |-> $past(mtdc == csp_at_entry  && mtdc_addr == csp_addr_at_entry)
+            && ~overlap(csp, csp_addr, $past(csp_at_entry), $past(csp_addr_at_entry)) 
+            && ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), ct2, ct2_addr) 
+            && ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), cra, cra_addr)
         );
+        endproperty
+        push_through: assert property (push_through_prop);
+    endmodule
 
-        // trying on the whole code block with a more relaxed delay
-        push_through: assert property(
-            `INSTR == instr_lines[0] && csp_no_overlap_except2
-            ##1 
-            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap)[*1:5]
-            ##1
-            (`INSTR == instr_lines[2] && csp_at_entry_no_memory_overlap)[*1:5]
-            ##1
-            (`INSTR == instr_lines[3] && csp_at_entry_no_memory_overlap)[*1:5]
-            ##1 
-            (`INSTR == instr_lines[4] && csp_at_entry_no_memory_overlap)[*1:5]
-            ##1 
-            (`INSTR == instr_lines[5] && csp_at_entry_no_memory_overlap)[*1:5]
-            ##1 
-            (`INSTR == instr_lines[6] && csp_at_entry_no_memory_overlap)[*1:5]
-            ##1 
-            (`INSTR == instr_lines[7] && csp_at_entry_no_memory_overlap)[*1:5]
-            ##1 
-            instr_has_changed
-            |-> no_overlap_all_fn(csp_at_entry, csp_addr_at_entry)
-        );
+     module helpers;
+        //-----------------------------------------------------------
+        // Defining some helper properties
+        //-----------------------------------------------------------     
+
+        
+        property instr_lifecycle_prop;
+            (`INSTR_LIFECYCLE |-> ##1 $past(instr_will_progress));
+        endproperty
+        instr_lifecycle: assert property (instr_lifecycle_prop);
+
+        property mtdc_continuity_prop;
+            (`INSTR == instr_lines[1] | `INSTR == instr_lines[2] | `INSTR == instr_lines[3] |
+            `INSTR == instr_lines[4] | `INSTR == instr_lines[5] | `INSTR == instr_lines[6] | `INSTR == instr_lines[7]
+            |->  mtdc == $past(mtdc) && mtdc_addr == $past(mtdc_addr)
+            );
+        endproperty
+        mtdc_continuity: assert property (mtdc_continuity_prop);
+
+
+
+
+        property instr_validity_prop;
+            (##1 `INSTR != $past(`INSTR)
+            |-> wbexc_exists
+            );
+        endproperty
+        instr_validity: assert property (instr_validity_prop);
+
+        property no_err_prop;
+          (PCCHasASR && csp_assumptions && wbexc_exists && `INSTR == instr_lines[0] && ~wbexc_fetch_err
+          |-> ~wbexc_err);
+        endproperty
+        no_err: assert property (no_err_prop);
+
+        property no_change_while_not_progressing_prop;
+            (~instr_will_progress |-> ##1 $stable(`INSTR));
+        endproperty
+        no_change_while_not_progressing: assert property (no_change_while_not_progressing_prop);
+
+        // property csp_no_change_prop;
+        //     (`INSTR_WB(0) |-> $stable(csp) throughout `INSTR_LIFECYCLE);
+        // endproperty
+        // csp_no_change: assert property (csp_no_change_prop);
+
+        
+        // property csp_at_entry_continuity_prop;
+        //     (`INSTR != instr_lines[0]
+        //     |->  csp_at_entry == $past(csp_at_entry) && csp_addr_at_entry == $past(csp_addr_at_entry)
+        //     );
+        // endproperty
+        // csp_at_entry_continuity: assert property (csp_at_entry_continuity_prop);
+
+        // property ct2_continuity_prop;
+        //     (`INSTR == instr_lines[0] | `INSTR == instr_lines[2] | `INSTR == instr_lines[3] |
+        //     `INSTR == instr_lines[4] | `INSTR == instr_lines[5] | `INSTR == instr_lines[7]
+        //     |=>  ct2 == $past(ct2) && ct2_addr == $past(ct2_addr)
+        //     );
+        // endproperty
+        // ct2_continuity: assert property (ct2_continuity_prop);
     endmodule
 
     module test;

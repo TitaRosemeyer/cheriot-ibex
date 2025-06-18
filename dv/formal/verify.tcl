@@ -128,4 +128,4 @@ proc prove_no_liveness {} {
 	prove -wait
 }
 
-# source build/psgen.tcl
+source build/psgen.tcl
