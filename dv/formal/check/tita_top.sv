@@ -216,34 +216,6 @@ module tita;
         //----------------------------------------------------------
         // Doing it the old way: checking which instruction is in `INSTR
         //----------------------------------------------------------
-        property line_0_old_prop;
-            (
-            (csp_assumptions && PCCHasASR && wbexc_exists && ~wbexc_fetch_err) and
-            (`INSTR == instr_lines[0])[*1:5]
-            ##1
-            instr_has_changed
-            |-> $past(mtdc == csp_at_entry) &&
-            $past(mtdc_addr == csp_addr_at_entry) 
-        ); 
-        endproperty
-        // line_0_old: assert property (line_0_old_prop);
-
-        property lines_0_1_old_prop;
-            ((csp_assumptions && PCCHasASR && wbexc_exists && ~wbexc_fetch_err) and
-            (`INSTR == instr_lines[0])[*1:5] 
-            ##1 
-            (`INSTR == instr_lines[1] && csp_at_entry_no_memory_overlap && ~wbexc_fetch_err)[*1:5] 
-            ##1
-            instr_has_changed
-            |->  ~overlap($past(csp_at_entry), $past(csp_addr_at_entry), ct2, ct2_addr) 
-        ); 
-        endproperty
-        // lines_0_1_old: assert property (lines_0_1_old_prop);
-
-
-        //----------------------------------------------------------
-        // Trying different versions of the whole code block
-        //----------------------------------------------------------
 
         // these are the delays for the different stages of the pipeline, as observed in example executions
         parameter l0_delay = 2;
