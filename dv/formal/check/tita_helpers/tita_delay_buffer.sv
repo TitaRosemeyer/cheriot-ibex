@@ -40,6 +40,8 @@ end
 reg_cap_t csp_at_entry = NULL_REG_CAP;
 logic [31:0] csp_addr_at_entry = 32'h0;
 always_latch begin 
+    // if the instruction has changed and the current instruction is the first of the code block
+    // and is valid (wbexc_exists), take a snapshot of the csp and csp_addr
     if ($past(instr_will_progress) && `INSTR == instr_lines[0] && wbexc_exists) begin
         csp_at_entry = csp;
         csp_addr_at_entry = csp_addr;

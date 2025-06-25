@@ -92,12 +92,14 @@ module tita;
         logic csp_at_entry_no_overlap_except2 = no_overlap_except2_fn(csp_at_entry, csp_addr_at_entry);
 
         `define CPU_WB_PATH  ibex_top_i.u_ibex_core.wb_stage_i
-        reg_cap_t lsu_cap_i = `CPU_WB_PATH.rf_wcap_lsu_i;
-        logic [31:0] lsu_addr_i = `CPU_WB_PATH.rf_wdata_lsu_i;
+        reg_cap_t lsu_cap_i = `CPU_WB_PATH.rf_wcap_lsu_i; // in core.sv, linked to lsu_rcap_o from load_store_unit.sv
+        logic [31:0] lsu_addr_i = `CPU_WB_PATH.rf_wdata_lsu_i; // same as above with lsu_rdata_o
 
         logic csp_no_memory_overlap = ~overlap(csp, csp_addr, lsu_cap_i , lsu_addr_i);
         logic csp_at_entry_no_memory_overlap = ~overlap(csp_at_entry, csp_addr_at_entry, lsu_cap_i, lsu_addr_i);
 
+        // for memory overlap checks, maybe change to specific addresses
+        // ibex_top_i.u_ibex_core.load_store_unit_i.addr_last_o: stores address where lsu_cap_i comes from
         
 
         //----------------------------------------------------------
