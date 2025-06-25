@@ -1,5 +1,5 @@
 # source Symbolic simulation utilities
-source /home/mf24tpr/FPNew-FADD-64/utils/symsim_utils.tcl
+source check/symsim_utils/symsim_utils.tcl
 namespace import symsim::*
 
 # Create a symsim model of the design under verification
@@ -70,7 +70,7 @@ set antv [merge_antecedents $global_assumptions_antv $wb_instr_antv $instr_will_
 # ---------------------------------------------------------------------
 # Include helpers to create a recipe and a BDD order
 # ---------------------------------------------------------------------
-source /home/mf24tpr/FPNew-FADD-64/utils/cheriot_utils.tcl
+source check/symsim_utils/cheriot_utils.tcl
 
 # ---------------------------------------------------------------------
 # Little utility to prove an input/output property of the adder.
