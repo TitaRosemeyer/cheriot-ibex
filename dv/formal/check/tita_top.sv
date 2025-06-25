@@ -117,9 +117,11 @@ module tita;
             ((~instr_will_progress)[*n-1] ##1 instr_will_progress)
 
         property line_0_prop;
-            (((PCCHasASR && csp_assumptions && `INSTR_WB(0)) and
-            `INSTR_LIFECYCLE)
-            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry
+            (PCCHasASR && `INSTR_WB(0) &&
+            ~instr_will_progress
+            ##1 
+            instr_will_progress
+            |-> mtdc == csp_at_entry && mtdc_addr == csp_addr_at_entry // mtdc == var
             );
         endproperty
         line_0: assert property (line_0_prop);

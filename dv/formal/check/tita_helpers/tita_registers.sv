@@ -38,3 +38,5 @@ reg_cap_t cra = `RF.rf_cap[1];
 logic [31:0] csp_addr = `RF.rf_reg[2];
 logic [31:0] ct2_addr = `RF.rf_reg[7];
 logic [31:0] cra_addr = `RF.rf_reg[1];
+
+logic [31:0] wb_instr = `INSTR;
