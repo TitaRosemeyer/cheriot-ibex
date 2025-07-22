@@ -320,3 +320,60 @@ Also see sdk/core/switcher/trusted-stack-assembly.h
 - mstatus: machine status register
 
 
+```systemverilog
+/**
+ * Each thread in the system has, and is identified by, its Trusted Stack.
+ * These structures hold an activation frame (a TrustedStackFrame) for each
+ * active cross-compartment call as well as a "spill" register context, used
+ * mostly for preemption (but also as staging space when a thread is adopting a
+ * new context as part of exception handlng).
+ */
+template<size_t NFrames>
+struct TrustedStackGeneric
+{
+	void  *mepcc;
+	void  *cra; // c1
+	void  *csp; // c2
+	void  *cgp; // c3
+	void  *ctp; // c4
+	void  *ct0; // c5
+	void  *ct1; // c6
+	void  *ct2; // c7
+	void  *cs0; // c8
+	void  *cs1; // c9
+	void  *ca0; // c10
+	void  *ca1; // c11
+	void  *ca2; // c12
+	void  *ca3; // c13
+	void  *ca4; // c14
+	void  *ca5; // c15
+	void  *hazardPointers;
+	size_t mstatus;
+	size_t mcause;
+#ifdef CONFIG_MSHWM
+	uint32_t mshwm;
+	uint32_t mshwmb;
+#endif
+	uint16_t frameoffset;
+	/**
+	 * The ID of the current thread.  Never modified during execution.
+	 */
+	uint16_t threadID;
+	// Padding up to multiple of 16-bytes.
+	uint8_t padding[
+#ifdef CONFIG_MSHWM
+	  12
+#else
+	  4
+#endif
+	];
+	/**
+	 * The trusted stack.  There is always one frame, describing the entry
+	 * point.  If this is popped then we have run off the stack and the thread
+	 * will exit.
+	 */
+	TrustedStackFrame frames[NFrames + 1];
+};
+using TrustedStack = TrustedStackGeneric<0>;
+
+```
