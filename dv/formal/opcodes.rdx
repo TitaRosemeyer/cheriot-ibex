@@ -1,0 +1,27 @@
+radix opcode
+size 32
+base h
+begin
+CGETTAGA0   fe4506db
+BEQZ        00068063
+CGETBASE    fe2506db
+BNE         00d51063
+CGETLEN     fe3506db 
+CGETPERM    fe0506db
+ANDI        2006f693
+CUNSEAL     18c5865b
+CGETTAGA2   fe4606db
+CLW         00062683
+CGETTOP     ff8606db
+CINCOFFSET  0086155b
+SUB         40a68633
+CSETBOUNDS  12c5055b
+CRET        00008067
+LIA2        00000613
+LIA0        00000513
+end
+
+use radix opcode 
+begin 
+signal wbexc_decompressed_instr
+end
