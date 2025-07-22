@@ -18,9 +18,9 @@ This file is included in top.sv which is the main entry point for the formal ver
 
 
 // Include helper files
-`include "tita_helpers/tita_registers.sv"
-`include "tita_helpers/tita_cap_overlap.sv" 
-`include "tita_helpers/tita_delay_buffer.sv"
+`include "tita_helpers/register_names.sv"
+`include "tita_helpers/cap_comparisons.sv" 
+`include "tita_helpers/variable_snapshots.sv"
 `include "tita_helpers/decoding_correctness.sv"
 
 `include "switcher.sv"
