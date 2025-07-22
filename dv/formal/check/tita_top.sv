@@ -24,3 +24,4 @@ This file is included in top.sv which is the main entry point for the formal ver
 `include "tita_helpers/decoding_correctness.sv"
 
 `include "switcher.sv"
+`include "unsealer.sv"
