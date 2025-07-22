@@ -52,22 +52,29 @@ function automatic bit overlap(reg_cap_t cap1, logic [31:0] addr1, reg_cap_t cap
 endfunction
 
 
-// Macro to define overlap functions with capability registers and store problem index
-// Given a function name and a condition, it generates a function that checks for overlap
-// with all capabilities in the register file where the index i satisfies the condition.
-// The function returns 1 if no overlap is found, and 0 if an overlap is detected,
-// storing the index of the first overlapping capability in FNNAME_problem_index.
-`define CAPNOOVERLAPREGS_FN(FNNAME, CONDITION) \
+// Given a comparison function CHECK_FN between two capabilities, 
+// this macro defines a function that, gets a capability. 
+// It returns true if there is no successful comparison with any of the capabilities in the register file.
+// If there is a successful comparison, it returns false and stores the index of the first overlapping
+// capability in the variable FNNAME``_problem_index.
+// The CONDITION parameter is used to filter which registers are checked.
+`define NOT_IN_REGS_FN(FNNAME, CONDITION, CHECK_FN) \
 	int FNNAME``_problem_index = -1; \
-	function automatic bit FNNAME(reg_cap_t cap, logic [31:0] cap_addr); \
+	function automatic bit FNNAME(reg_cap_t cap, logic [31:0] addr); \
 		bit result = 1; \
-		FNNAME``_problem_index = -1; \
 		for (int i = 0; i < 32; i++) begin \
-			if (CONDITION) \
-				if(overlap(`RF.rf_cap[i], regs[i], cap, cap_addr)) begin \
+			if (CONDITION) begin \
+				if(CHECK_FN(`RF.rf_cap[i], regs[i], cap, addr)) begin \
 					FNNAME``_problem_index = i; \
+					// add a debug message \
+					$display("Problem found in register %0d", i); \
 					return 0; \
 				end \
+				end \
 		end \
-		return 1; \
+		return result; \
 	endfunction
+
+
+`define CAP_NO_OVERLAP_REGS_FN(FNNAME, CONDITION) \
+	`NOT_IN_REGS_FN(FNNAME, CONDITION, overlap) 

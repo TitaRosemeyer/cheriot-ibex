@@ -8,4 +8,4 @@ prove -bg -property {Tita::top.tita.instructions.lines_0_3_concrete} -engine_mod
 prove -bg -property {Tita::top.tita.instructions.lines_0_4_concrete} -engine_mode Hp
 prove -bg -property {Tita::top.tita.instructions.lines_0_5_concrete} -engine_mode Hp
 prove -bg -property {Tita::top.tita.instructions.lines_0_6_concrete} -engine_mode Hp
-prove -bg -property {Tita::top.tita.instructions.all_lines_concrete_delay} -engine_mode Hp
+prove -bg -property {Tita::top.tita.instructions.lines_0_7_concrete} -engine_mode Hp
