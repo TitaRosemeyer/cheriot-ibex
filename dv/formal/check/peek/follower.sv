@@ -63,6 +63,7 @@ always @(posedge clk_i or negedge rst_ni) begin
         ex_has_branched_q <= ex_has_branched_d;
         if (instr_will_progress) begin
             ex_has_branched_q <= 1'b0;
+            wbexc_has_branched <= ex_has_branched_d;
             wbexc_post_wX <= spec_post_wX;
             wbexc_post_wX_addr <= spec_post_wX_addr;
             wbexc_post_wX_en <= spec_post_wX_en;
