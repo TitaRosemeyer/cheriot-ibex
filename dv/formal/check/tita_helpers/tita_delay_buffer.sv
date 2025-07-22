@@ -47,3 +47,11 @@ always_latch begin
         csp_addr_at_entry = csp_addr;
     end
 end
+
+`define MAKE_VAR_AT_ENTRY(VARNAME, VARTYPE, TRIGGERINSTR) \
+    VARTYPE VARNAME``_at_entry; \
+    always_latch begin \
+        if (($past(instr_will_progress) && `INSTR == TRIGGERINSTR && wbexc_exists) || ~rst_ni) begin \
+            VARNAME``_at_entry = VARNAME; \
+        end \
+    end

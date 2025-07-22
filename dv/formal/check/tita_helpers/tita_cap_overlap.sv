@@ -42,14 +42,119 @@ endfunction
 // checks if two capabilities overlap based on their bounds and addresses.
 // Returns 1 if they overlap, 0 otherwise.
 function automatic bit overlap(reg_cap_t cap1, logic [31:0] addr1, reg_cap_t cap2, logic [31:0] addr2);
-    // what about invalid capabilities? 
-    // what about permissions?
-    logic [32:0] top1 = get_top_bound33(cap1, addr1);
-    logic [32:0] top2 = get_top_bound33(cap2, addr2);
-    logic [31:0] base1 = get_base_bound32(cap1, addr1);
-    logic [31:0] base2 = get_base_bound32(cap2, addr2);
+   
+	logic [32:0] top1 = get_top_bound33(cap1, addr1);
+	logic [32:0] top2 = get_top_bound33(cap2, addr2);
+	logic [31:0] base1 = get_base_bound32(cap1, addr1);
+	logic [31:0] base2 = get_base_bound32(cap2, addr2);
+
+	// check if the bounds overlap
     return ~((top1 < base2) || (top2 < base1));
 endfunction
+
+function automatic bit has_stricter_bounds(reg_cap_t cap1, logic [31:0] addr1, reg_cap_t cap2, logic [31:0] addr2);
+	// Check if cap1 has at least as strict bounds as cap2
+	logic [32:0] top1 = get_top_bound33(cap1, addr1);
+	logic [32:0] top2 = get_top_bound33(cap2, addr2);
+	logic [31:0] base1 = get_base_bound32(cap1, addr1);
+	logic [31:0] base2 = get_base_bound32(cap2, addr2);
+
+	// If cap1's top is less than or equal to cap2's top and cap1's base is greater than or equal to cap2's base
+	return (top1 <= top2) && (base1 >= base2);
+endfunction
+
+function automatic logic [11:0] get_permissions(reg_cap_t cap);
+	// There are 12 permissions possible in a capability,
+	// 11 10  9  8  7  6  5  4  3  2  1  0
+	// U0 SE US EX SR MC LD SL LM SD LG GL
+	// They are compressed in the 6 bits of the perm field.
+	logic [11:0] perms = 12'h0;
+	logic [5:0] perm_field = cap.cperms;
+	
+	// in any case, the first bit of perm_field always determines GL
+	perms[0] = perm_field[5]; // GL 
+
+	// do a case split over perm_field[4:3]
+	casez (perm_field[4:0])
+		2'b11???: begin
+			// Memory cap-read-write: GL 1 1 SL LM LG Implicit: LD, MC, SD
+			perms[4] = perm_field[2]; // SD
+			perms[3] = perm_field[1]; // LM
+			perms[1] = perm_field[0]; // LG
+			// implicitly set LD, MC, SD to 1
+			perms[5] = 1'b1; // LD
+			perms[6] = 1'b1; // MC
+			perms[2] = 1'b1; // SD
+		end
+
+		2'b101??: begin
+			// Memory cap-read-only: GL 1 0 1 LM LG Implicit: LD, MC
+			perms[3] = perm_field[1]; // LM
+			perms[1] = perm_field[0]; // LG
+			// implicitly set LD, MC to 1
+			perms[5] = 1'b1; // LD
+			perms[6] = 1'b1; // MC
+		end
+
+		2'b10000: begin
+			// Memory cap-write-only: GL 1 0 0 0 0 Implicit: SD, MC
+			perms[2] = 1'b1; // SD
+			perms[6] = 1'b1; // MC
+		end
+
+		2'b100??: begin
+			// Memory data-only: GL 1 0 0 LD SD Implicit: None
+			perms[5] = perm_field[1]; // LD
+			perms[2] = perm_field[0]; // SD
+		end
+
+		2'b01???: begin
+			// Executable: GL 0 1 SR LM LG Implicit: EX, LD, MC
+			perms[7] = perm_field[2]; // SR
+			perms[3] = perm_field[1]; // LM
+			perms[1] = perm_field[0]; // LG
+			// implicitly set EX, LD, MC to 1
+			perms[8] = 1'b1; // EX
+			perms[5] = 1'b1; // LD
+			perms[6] = 1'b1; // MC
+		end
+
+		2'b00???: begin
+			// Sealing: GL 0 0 U0 SE US Implicit: None
+			perms[11] = perm_field[2]; // U0
+			perms[10] = perm_field[1]; // SE
+			perms[9] = perm_field[0]; // US
+		end
+
+		default: begin
+			// Invalid capability permissions
+			perms = 12'h0; // no permissions set
+		end
+	endcase
+	return perms;
+endfunction
+
+function automatic bit has_fewer_perms(reg_cap_t cap1, reg_cap_t cap2);
+	// Check if cap1 has at least as strict permissions as cap2
+	logic [11:0] perms1 = get_permissions(cap1);
+	logic [11:0] perms2 = get_permissions(cap2);
+
+	// If cap1 has a permission then cap2 must also have it
+	return (perms1 & perms2) == perms1;
+endfunction
+
+function automatic bit derived_from(reg_cap_t cap1, logic [31:0] addr1, reg_cap_t cap2, logic [31:0] addr2);
+	// Check if cap1 could be derived from cap2
+	logic result = 1;
+	
+	logic both_valid = (cap1.valid && cap2.valid);
+	// logic both_unsealed = (cap1.otype == 3'b000 && cap2.otype == 3'b000);
+	logic fewer_perms = has_fewer_perms(cap1, cap2);
+	logic stricter_bounds = has_stricter_bounds(cap1, addr1, cap2, addr2);
+
+	return both_valid && stricter_bounds && fewer_perms;
+endfunction
+
 
 
 // Given a comparison function CHECK_FN between two capabilities, 
@@ -70,7 +175,7 @@ endfunction
 					$display("Problem found in register %0d", i); \
 					return 0; \
 				end \
-				end \
+			end \
 		end \
 		return result; \
 	endfunction
