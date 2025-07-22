@@ -24,3 +24,18 @@ assume -from_assert {Tita::top.tita.helpers.*}
 
 # add the properties we want to check
 task -edit Tita -copy {top.tita.instructions.*}
+
+# add unsealer task
+task -create Tita_unsealer
+
+# copy all assumes from Tita_help task
+task -edit Tita_unsealer -copy_assumes -copy {Tita_help::*}
+
+# assume everything that the helper task proved
+assume -from_assert {Tita_unsealer::top.tita.helpers.*}
+
+# remove all cover properties from the helper task
+cover -remove Tita_unsealer::*
+
+# add the unsealer properties
+task -edit Tita_unsealer -copy {top.unsealer_props.*}

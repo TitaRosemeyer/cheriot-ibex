@@ -35,8 +35,16 @@ logic [31:0] mstatus = `CSR.mstatus_en_combi;
 reg_cap_t csp = `RF.rf_cap[2];
 reg_cap_t ct2 = `RF.rf_cap[7];
 reg_cap_t cra = `RF.rf_cap[1];
+reg_cap_t ca0 = `RF.rf_cap[10];
+reg_cap_t ca1 = `RF.rf_cap[11];
+reg_cap_t ca2 = `RF.rf_cap[12];
+reg_cap_t ca3 = `RF.rf_cap[13];
 logic [31:0] csp_addr = `RF.rf_reg[2];
 logic [31:0] ct2_addr = `RF.rf_reg[7];
 logic [31:0] cra_addr = `RF.rf_reg[1];
+logic [31:0] a0 = `RF.rf_reg[10];
+logic [31:0] a1 = `RF.rf_reg[11];
+logic [31:0] a2 = `RF.rf_reg[12];
+logic [31:0] a3 = `RF.rf_reg[13];
 
 logic [31:0] wb_instr = `INSTR;
