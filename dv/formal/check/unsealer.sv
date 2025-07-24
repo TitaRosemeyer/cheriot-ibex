@@ -29,16 +29,16 @@ module unsealer_props;
     // take a snapshot of the object pointer at the entrypoint (l00_cgettag)
     `MAKE_VAR_AT_ENTRY(ca1, reg_cap_t, l00_cgettag);
     `MAKE_VAR_AT_ENTRY(a1, logic [31:0], l00_cgettag);
-    // take $past, as it will be checked one cycle after the last instruction
-    reg_cap_t obj_ptr = $past(ca1_at_entry);
-    logic [31:0] obj_ptr_addr = $past(a1_at_entry);
+    // rename for clarity 
+    reg_cap_t obj_ptr = ca1_at_entry; 
+    logic [31:0] obj_ptr_addr = a1_at_entry;
 
     // take a snapshot of the unsealing authority at the entrypoint (l00_cgettag)
     `MAKE_VAR_AT_ENTRY(ca2, reg_cap_t, l00_cgettag);
     `MAKE_VAR_AT_ENTRY(a2, logic [31:0], l00_cgettag);
-    // take $past, as it will be checked one cycle after the last instruction
-    reg_cap_t us_auth = $past(ca2_at_entry);
-    logic [31:0] us_auth_addr = $past(a2_at_entry);
+    // rename for clarity
+    reg_cap_t us_auth = ca2_at_entry;
+    logic [31:0] us_auth_addr = a2_at_entry;
     
     `CAP_NO_OVERLAP_REGS_FN(no_overlap_all_fn, 1)
     `CAP_NO_OVERLAP_REGS_FN(no_overlap_except_ca0_ca1_ca2_fn, i!= 10 && i!= 11 && i!= 12)
@@ -82,6 +82,7 @@ module unsealer_props;
         ##1 `INSTR_WB(l32_cinoffset) && instr_will_progress
         ##1 `INSTR_WB(l36_sub) && instr_will_progress
         ##1 `INSTR_WB(l3a_csetboundsexact) && instr_will_progress
+        ##1 `INSTR_WB(l3e_cret)
         );
     endsequence
     cover_success_sequence: cover sequence (success_sequence);
@@ -91,10 +92,10 @@ module unsealer_props;
         (`INSTR_WB(l40_li_a2) && instr_will_progress
         ##1 `INSTR_WB(l42_li_a0) && instr_will_progress 
         ##1 `INSTR_WB(l44_cret) 
-        ##1 instr_will_progress
         );
     endsequence
     cover_failure_sequence: cover sequence (failure_sequence);
+
 
     // define checks to see if a capability is unsealed correctly
     logic [32:0] obj_ptr_top = get_top_bound33(obj_ptr, obj_ptr_addr);
@@ -137,28 +138,28 @@ module unsealer_props;
     
     property success_path_us_auth_other_regs_prop;
      ( (success_sequence and assumption)
-        |=> us_auth_safe_other_regs
+        |-> us_auth_safe_other_regs
         );
     endproperty;
     success_path_us_auth_other_regs: assert property (success_path_us_auth_other_regs_prop);
 
     property success_path_obj_ptr_other_regs_prop;
         ( (success_sequence and assumption)
-        |=> no_derivatives_except_ca0_ca1_fn($past(ca1_at_entry), $past(a1_at_entry))
+        |-> obj_ptr_safe_other_regs
         );
     endproperty;
     success_path_obj_ptr_other_regs: assert property (success_path_obj_ptr_other_regs_prop);
 
     property check_ca0_ok_prop;
         (success_sequence
-        |=> ca0_ok
+        |-> ca0_ok
         );
     endproperty;
     check_ca0_ok: assert property (check_ca0_ok_prop);
 
     property check_ca1_ok_prop;
         ( success_sequence
-        |=> ca1_ok
+        |-> ca1_ok
         );
     endproperty;
     check_ca1_ok: assert property (check_ca1_ok_prop);
@@ -168,7 +169,7 @@ module unsealer_props;
     // follows from check_ca1_ok
     property success_path_us_auth_ca1_prop;
         ( (success_sequence and no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2))
-        |=> us_auth_safe_ca1
+        |-> us_auth_safe_ca1
         );
     endproperty;
     // success_path_us_auth_ca1: assert property (success_path_us_auth_ca1_prop);
@@ -176,7 +177,7 @@ module unsealer_props;
     // follows from check_ca0_ok
     property success_path_us_auth_ca0_prop;
         ( (success_sequence and no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2))
-        |=> us_auth_safe_ca0
+        |-> us_auth_safe_ca0
         );
     endproperty;
     // success_path_us_auth_ca0: assert property (success_path_us_auth_ca0_prop);
@@ -184,7 +185,7 @@ module unsealer_props;
     // follows from check_ca0_ok and check_ca1_ok and success_path_us_auth_other_regs_prop
     property success_path_us_auth_prop;
         ( (success_sequence and no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2))
-        |=> us_auth_safe
+        |-> us_auth_safe
         );
     endproperty;
     // success_path_us_auth: assert property (success_path_us_auth_prop);
@@ -194,8 +195,5 @@ module unsealer_props;
         |-> ~wbexc_err);
     endproperty
     // check_instr_will_progress_assert: assert property (check_instr_will_progress);
-
-
-    
 
 endmodule
