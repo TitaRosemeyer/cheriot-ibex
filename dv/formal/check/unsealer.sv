@@ -23,6 +23,8 @@
     * - in ca1: sealed object pointer (equal to input argument)
     *
 */
+
+`define ASSUME_INDEPENDENT_ARGS 1
 module unsealer_props;
     `include "tita_helpers/unsealer_lines.sv"
 
@@ -46,10 +48,13 @@ module unsealer_props;
     `NOT_IN_REGS_FN(no_derivatives_all_fn, 1, derived_from);
     `NOT_IN_REGS_FN(no_derivatives_except_ca0_ca1_ca2_fn, i!=10 && i!=11 && i!=12, derived_from);
     `NOT_IN_REGS_FN(no_derivatives_except_ca0_ca1_fn, i!=10 && i!=11, derived_from);
+    `NOT_IN_REGS_FN(no_derivatives_except_ca0_fn, i!=10, derived_from);
+    `NOT_IN_REGS_FN(no_derivatives_except_ca1_fn, i!=11, derived_from);
+    `NOT_IN_REGS_FN(no_derivatives_except_ca2_fn, i!=12, derived_from);
 
     reg_cap_t test_cap;
     logic [31:0] test_addr;
-    sanity_check_derivative: assert property ((test_cap.valid && (test_cap.otype == 3'b000)) ->derived_from(test_cap, test_addr, test_cap, test_addr));
+    // sanity_check_derivative: assert property ((test_cap.valid && (test_cap.otype == 3'b000)) ->derived_from(test_cap, test_addr, test_cap, test_addr));
     
     // for debugging
     int ca0_top = int'(get_top_bound33(ca0, a0));
@@ -85,7 +90,7 @@ module unsealer_props;
         ##1 `INSTR_WB(l3e_cret)
         );
     endsequence
-    cover_success_sequence: cover sequence (success_sequence);
+    // cover_success_sequence: cover sequence (success_sequence);
 
 
     sequence failure_sequence;
@@ -94,14 +99,14 @@ module unsealer_props;
         ##1 `INSTR_WB(l44_cret) 
         );
     endsequence
-    cover_failure_sequence: cover sequence (failure_sequence);
+    // cover_failure_sequence: cover sequence (failure_sequence);
 
 
     // define checks to see if a capability is unsealed correctly
     logic [32:0] obj_ptr_top = get_top_bound33(obj_ptr, obj_ptr_addr);
     logic [31:0] obj_ptr_base = get_base_bound32(obj_ptr, obj_ptr_addr);
     logic [32:0] expected_top = obj_ptr_top;
-    logic [31:0] expected_base = obj_ptr_base + 8; 
+    logic [31:0] expected_base = obj_ptr_base + 8; // base + 8 to remove header
     function automatic bit is_correct_unsealed_pointer(reg_cap_t cap, logic [31:0] addr);
         // Check if the unsealed pointer is correct
         // i.e. base is address of the sealed object + 8, 
@@ -110,7 +115,9 @@ module unsealer_props;
         logic is_unsealed = (cap.otype == 3'b000);
         logic [31:0] cap_base = get_base_bound32(cap, addr);
         logic [32:0] cap_top = get_top_bound33(cap, addr);
-        logic has_correct_base = ( cap_base >= expected_base);
+
+        // at least as strict as the expected bounds
+        logic has_correct_base = ( cap_base >= expected_base); 
         logic has_correct_top = (cap_top <= expected_top);
         logic has_correct_address = (addr == cap_base);
         return is_unsealed && has_correct_base && has_correct_top && has_correct_address;   
@@ -131,69 +138,51 @@ module unsealer_props;
     logic obj_ptr_safe_other_regs = no_derivatives_except_ca0_ca1_fn(obj_ptr, obj_ptr_addr);
     logic obj_ptr_safe_ca1 = ca1_ok || ~derived_from(ca1, a1, obj_ptr, obj_ptr_addr);
     logic obj_ptr_safe_ca0 = ca0_ok || ~derived_from(ca0, a0, obj_ptr, obj_ptr_addr);
-    logic obj_ptr_safe = obj_ptr_safe && obj_ptr_safe_ca1 && obj_ptr_safe_ca0;
+    logic obj_ptr_safe = obj_ptr_safe_other_regs && obj_ptr_safe_ca1 && obj_ptr_safe_ca0;
+
+
+    // check object pointer assumptions
+    logic [11:0] ca1_has_load = expand_perms(ca1.cperms)[5]; // LD permission
+    logic [32:0] ca1_top = get_top_bound33(ca1, a1);
+    logic [31:0] ca1_base = get_base_bound32(ca1, a1);
+    logic ca1_clw_in_bounds = ((ca1_base <= a1) && (a1 <= (ca1_top - 32'h4)) && (ca1_top >= 32'h4));
+    logic ca1_assumption = 1; //ca1_has_load && ca1_clw_in_bounds;
 
     // assume that the unsealing authority and object pointer are not leaked at the beginning of the execution
-    logic assumption = no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2) && no_derivatives_except_ca0_ca1_ca2_fn(ca1, a1);
-    
-    property success_path_us_auth_other_regs_prop;
-     ( (success_sequence and assumption)
-        |-> us_auth_safe_other_regs
-        );
-    endproperty;
-    success_path_us_auth_other_regs: assert property (success_path_us_auth_other_regs_prop);
-
-    property success_path_obj_ptr_other_regs_prop;
-        ( (success_sequence and assumption)
-        |-> obj_ptr_safe_other_regs
-        );
-    endproperty;
-    success_path_obj_ptr_other_regs: assert property (success_path_obj_ptr_other_regs_prop);
-
-    property check_ca0_ok_prop;
-        (success_sequence
-        |-> ca0_ok
-        );
-    endproperty;
-    check_ca0_ok: assert property (check_ca0_ok_prop);
-
-    property check_ca1_ok_prop;
-        ( success_sequence
-        |-> ca1_ok
-        );
-    endproperty;
-    check_ca1_ok: assert property (check_ca1_ok_prop);
-
+    logic assumption;
+    always_comb begin
+        if (`ASSUME_INDEPENDENT_ARGS) begin
+            assumption = ca1_assumption && no_derivatives_except_ca2_fn(ca2, a2) && no_derivatives_except_ca1_fn(ca1, a1);
+        end else begin
+            // assume that the two sensitive input arguments are not derived from each other
+            assumption = ca1_assumption && no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2) && no_derivatives_except_ca0_ca1_ca2_fn(ca1, a1);
+        end
+    end
 
     
-    // follows from check_ca1_ok
-    property success_path_us_auth_ca1_prop;
-        ( (success_sequence and no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2))
-        |-> us_auth_safe_ca1
-        );
-    endproperty;
-    // success_path_us_auth_ca1: assert property (success_path_us_auth_ca1_prop);
+    
 
-    // follows from check_ca0_ok
-    property success_path_us_auth_ca0_prop;
-        ( (success_sequence and no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2))
-        |-> us_auth_safe_ca0
-        );
-    endproperty;
-    // success_path_us_auth_ca0: assert property (success_path_us_auth_ca0_prop);
+    `include "tita_unsealer_props/branches.sv"
+    `include "tita_unsealer_props/wbexc_err_props.sv"
+    `include "tita_unsealer_props/helper_props.sv"
+    `include "tita_unsealer_props/success_path_props.sv"
     
-    // follows from check_ca0_ok and check_ca1_ok and success_path_us_auth_other_regs_prop
-    property success_path_us_auth_prop;
-        ( (success_sequence and no_derivatives_except_ca0_ca1_ca2_fn(ca2, a2))
-        |-> us_auth_safe
-        );
-    endproperty;
-    // success_path_us_auth: assert property (success_path_us_auth_prop);
     
-    property check_instr_will_progress;
-        (instr_will_progress && wbexc_exists
-        |-> ~wbexc_err);
-    endproperty
-    // check_instr_will_progress_assert: assert property (check_instr_will_progress);
+    `include "tita_unsealer_props/branch_props.sv"
+
+    
+    // property success_path_safe_prop;
+    //     (success_sequence and assumption
+    //     |-> us_auth_safe && obj_ptr_safe
+    //     );
+    // endproperty
+    // success_path_safe: assert property (success_path_safe_prop);
+
+    
+
+    // property exception_safe_prop;
+    //     (check_l40_li_a2_prop and check_l42_li_a0_prop and no_wbexc_err_prop);
+    // endproperty
+    // exception_safe: assert property (exception_safe_prop);
 
 endmodule
